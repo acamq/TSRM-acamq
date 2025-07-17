@@ -128,7 +128,7 @@ class ExperimentRun:
 
         trainer = pl.Trainer(devices=1, accelerator="gpu", precision="16-mixed",
                              callbacks=([early_stopping, checkpoint_callback])
-                             if not config["dry_run"] else [DeviceStatsMonitor(cpu_stats=True)],
+                             if not config["dry_run"] else [],
                              default_root_dir=path, logger=[], profiler="simple" if config["dry_run"] else None)
 
         if self.phase != "finetune":
