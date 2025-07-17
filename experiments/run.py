@@ -4,7 +4,7 @@ from setups import *
 
 def run_experiments(dry_run=False, plot_attention=True):
 
-    if not os.path.exists("data_dir") or len(os.listdir("data_dir")):
+    if not os.path.exists("data_dir") or len(os.listdir("data_dir")) == 0:
         print("Download data first at: https://drive.google.com/drive/folders/1ZOYpTUa82_jCcxIdTmyr0LXQfvaM9vIy "
               "and save into 'data_dir' folder")
         os.makedirs("data_dir", exist_ok=True)

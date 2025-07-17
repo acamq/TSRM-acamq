@@ -126,12 +126,10 @@ class ExperimentRun:
         # logger = TensorBoardLogger(path, name="log")
         # logger.log_hyperparams(config)
 
-        mlflow = MLFlowLogger(experiment_name=self.experiment.get_exp_run_id(), run_name=self.phase + "_" + self.run_id, tracking_uri="http://localhost:5000")
-        mlflow.log_hyperparams(config)
         trainer = pl.Trainer(devices=1, accelerator="gpu", precision="16-mixed",
                              callbacks=([early_stopping, checkpoint_callback])
                              if not config["dry_run"] else [DeviceStatsMonitor(cpu_stats=True)],
-                             default_root_dir=path, logger=[mlflow], profiler="simple" if config["dry_run"] else None)
+                             default_root_dir=path, logger=[], profiler="simple" if config["dry_run"] else None)
 
         if self.phase != "finetune":
             tuner = Tuner(trainer)
