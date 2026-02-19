@@ -1,0 +1,80 @@
+# TSRM Imputation Pipeline Configuration for GDC OSSE Data
+
+data:
+  variables:
+    - GDC_TEMPERATURE
+    - GDC_TEMPERATURE_ION
+    - GDC_TEMPERATURE_ELEC
+    - GDC_VELOCITY_U
+    - GDC_VELOCITY_V
+    - GDC_DENSITY_ION_OP
+    - GDC_DENSITY_NEUTRAL_O
+    - GDC_DENSITY_NEUTRAL_O2
+  block_boundaries: [0, 60, 120, 180, 240]
+  cv_folds: 4
+  cv_strategy: leave_one_block_out
+  window_size: 30
+  window_stride_train: 5
+  window_stride_eval: 30
+
+normalization:
+  density_vars:
+    - GDC_DENSITY_ION_OP
+    - GDC_DENSITY_NEUTRAL_O
+    - GDC_DENSITY_NEUTRAL_O2
+  log_epsilon: 1.0e-30
+  scaler_type: nan_safe_standard
+  fit_on_train_only: true
+
+masking:
+  patterns: [point, subseq, block]
+  missing_rates: [0.1, 0.2, 0.3]
+  enforce_exact_rate: true
+  augmentation_factor: 5
+  seed: 42
+
+# TSRM model config - translated to TSRM dict by build_tsrm_config()
+tsrm:
+  # Architecture
+  encoding_size: 64
+  h: 4                    # attention heads
+  N: 2                    # encoder layers
+  conv_dims: [[3, 1, 1], [5, 1, 1], [7, 1, 1]]  # [kernel, dilation, groups]
+  attention_func: entmax15
+  dropout: 0.1
+
+  # Training
+  batch_size: 32
+  learning_rate: 0.001
+  epochs: 100
+  patience: 15            # early stopping patience
+
+  # Loss
+  loss_function_imputation: mse+mae
+  loss_imputation_mode: imputation
+  loss_weight_alpha: 0.5
+
+  # Time embedding
+  embed: timeF
+  freq: t                 # minutely
+
+  # Masking (for TSRM internals - these are defaults, actual values hardcoded)
+  mask_size: 3
+  mask_count: 1
+  # NOTE: revin=false and missing_ratio=0.0 are HARDCODED in build_tsrm_config()
+  # NOTE: task=imputation and phase=downstream are HARDCODED in build_tsrm_config()
+
+training:
+  accelerator: auto       # auto-detect GPU
+  precision: 16-mixed
+  gradient_clip_val: 1.0
+  num_workers: 4
+
+evaluation:
+  baselines: [locf, linear]
+  compute_per_variable: true
+  skill_score_eps: 1.0e-10
+
+paths:
+  data_dir: ${DATA_DIR}
+  scratch_dir: ${SCRATCH_DIR}

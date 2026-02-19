@@ -280,3 +280,184 @@ Date: 2026-02-19 08:20:58
 - All critical constraints preserved (8 variables, 6 satellites, 4 blocks, [0, 60, 120, 180, 240] boundaries)
 - Docstring updated to reference TSRM imputation pipeline instead of spacew
 - validate_no_cross_block_windows() helps ensure windows don't span across discontinuous blocks
+
+## Task 8: TSRMImputationExternal Subclass
+
+### Date
+2026-02-19
+
+### Findings
+- Added `architecture/tsrm_external.py` with `TSRMImputationExternal(TSRMImputation)` for external masking flow.
+- `_run(masked_data, original_data, embedding_x, embedding_y, ...)` derives mask via `torch.isnan(masked_data)`, replaces NaN with `0.0`, and forwards with `self.forward(input_data, embedding_x, mask=mask)`.
+- Loss reuses inherited `ImputationLoss` from parent and is computed only on masked positions via boolean `mask` (`self.loss(prediction=output, target=original_data, mask=mask)`).
+- Added `training_step()` and `validation_step()` overrides that consume externally masked batch tuples `(masked_data, original_data, embedding_x, embedding_y)`.
+- Added `impute()` inference method that fills only masked positions from model output while preserving unmasked values from `original_data`.
+
+### Verification
+- LSP diagnostics clean for `architecture/tsrm_external.py`.
+- Build check passed via `python -m compileall architecture/tsrm_external.py`.
+
+## Task 9: OSSEDataset + Time Embeddings
+
+### Date
+2026-02-19
+
+### Findings
+- Added `pipeline/data/dataset.py` with `OSSEDataset(torch.utils.data.Dataset)` for windowed arrays shaped `[n_samples, window_size, n_features]`.
+- Dataset output follows TSRM 4-tuple pattern from `Dataset_ETT`: `(masked_data, original_data, time_marks_x, time_marks_y)`.
+- `time_marks_x` and `time_marks_y` are identical for imputation (`time_marks_y = time_marks_x.clone()`).
+- Implemented time feature generation for `freq='t'` as 5 features to match `TimeFeatureEmbedding` (`freq_map['t'] = 5`): month, day, weekday, hour, minute.
+- Time features use normalized values in `[-0.5, 0.5]` with the same feature set expected by TSRM time embeddings.
+- Real timestamps are used when provided; synthetic sequential minute timestamps are only generated when timestamps are absent.
+- Added `create_dataloaders()` factory returning train/validation `DataLoader` objects with configurable `batch_size` and `num_workers`.
+
+### Verification
+- LSP diagnostics: clean for `pipeline/data/dataset.py`.
+- Build check passed via `python -m compileall pipeline/data/dataset.py`.
+
+## Task 10: OSSE Default YAML Configuration
+
+### Date
+2026-02-19
+
+### Findings
+
+**YAML Configuration File Created**
+- Successfully created `configs/osse_default.yaml` with complete TSRM imputation pipeline configuration
+- File location: `configs/osse_default.yaml`
+
+**Configuration Structure**
+- **data section**: Defines 8 GDC OSSE variables, block boundaries [0, 60, 120, 180, 240], 4-fold CV with leave-one-block-out strategy
+- **normalization section**: Specifies density variables for log transform (3 density vars), epsilon=1e-30, nan_safe_standard scaler
+- **masking section**: Three patterns (point, subseq, block), missing rates [0.1, 0.2, 0.3], augmentation_factor=5, seed=42
+- **tsrm section**: Model architecture (encoding_size=64, h=4, N=2, conv_dims, entmax15 attention), training params, loss config, time embedding
+- **training section**: Auto GPU detection, 16-mixed precision, gradient clipping, 4 workers
+- **evaluation section**: Baselines (locf, linear), per-variable computation, skill_score_eps=1e-10
+- **paths section**: Environment variable placeholders (${DATA_DIR}, ${SCRATCH_DIR})
+
+**Compatibility with build_tsrm_config()**
+- tsrm section fields map correctly to build_tsrm_config() expectations
+- Critical: No `revin` or `missing_ratio` fields (these are hardcoded to False and 0.0 respectively in build_tsrm_config())
+- No `task` or `phase` fields (hardcoded to "imputation" and "downstream" in build_tsrm_config())
+- All required fields for build_tsrm_config() are present:
+  - encoding_size, h, N, conv_dims, attention_func, dropout
+  - batch_size, learning_rate, epochs, patience
+  - loss_function_imputation, loss_imputation_mode, loss_weight_alpha
+  - embed, freq, mask_size, mask_count
+
+**Key Design Decisions**
+- window_size=30 corresponds to seq_len=30 for TSRM model
+- 8 variables = feature_dimension=8 (defaults to 7 in build_tsrm_config() but should be overridden)
+- freq="t" indicates minutely data (correct for OSSE data)
+- entmax15 attention function chosen for better sparse attention
+
+**Verification**
+- YAML syntax is valid (no parse errors)
+- All sections match expected structure from task requirements
+- Comments indicate hardcoded values to avoid confusion
+- LSP diagnostics: No errors in the created YAML file
+
+**Notes**
+- YAML uses environment variable placeholders for paths (${DATA_DIR}, ${SCRATCH_DIR})
+- These will be resolved via .env file using python-dotenv
+- Configuration is complete and ready for use with the TSRM imputation pipeline
+
+## Task 11: Experiment Tracking Module
+
+### Date
+2026-02-19
+
+### Findings
+
+**Experiment Tracking Module Copy (Task 11)**
+- Successfully copied `experiment.py` from spacew project to `pipeline/tracking/experiment.py`
+- Source file: `C:\Users\aic\liua\work\projects\spacew_root\github\spacew\src\spacew\tracking\experiment.py`
+- Destination: `pipeline/tracking/experiment.py`
+
+**Module Characteristics**
+- Self-contained module with only standard library dependencies and yaml
+- No spacew imports present (verified via grep)
+- LSP diagnostics: No errors in the new file
+- All core functionality preserved:
+  - `ExperimentTracker` class with atomic directory creation
+  - Hybrid ID format: `{timestamp}_{normalized_name}`
+  - 4-fold model directory structure: models/fold_0/, models/fold_1/, etc.
+
+**Key Methods**
+- `__init__(experiments_dir, experiment_name)`: Creates unique experiment directory with collision handling
+- `experiment_id` property: Returns unique identifier string
+- `experiment_dir` property: Returns Path to experiment directory
+- `_create_unique_experiment_dir()`: Atomic mkdir with collision handling (adds _2, _3 suffixes as needed)
+- `_create_fold_directories()`: Creates models/fold_N/ subdirectories (4 folds)
+- `save_config(config)`: Saves config as YAML to experiment directory
+- `load_config()`: Loads config from experiment directory
+- `get_model_dir()`: Returns models directory path (ADDED - not in source)
+- `get_eval_dir()`: Returns evaluation directory path (ADDED - not in source)
+- `_capture_git_info()`: Captures git commit hash and dirty state (graceful handling if not in git repo)
+- `_capture_environment()`: Captures Python version and installed packages using importlib.metadata
+- `save_metadata(seed, **kwargs)`: Saves metadata.json with git, environment, seed, and custom fields
+
+**Additional Methods Added**
+- `get_model_dir()`: Returns `self._experiment_dir / "models"` Path
+- `get_eval_dir()`: Creates and returns `self._experiment_dir / "eval"` Path (creates if needed)
+
+**Key Design Decisions**
+- Name normalization: Converts to lowercase, replaces spaces with underscores, removes special characters
+- Timestamp format: `YYYYMMDD_HHMMSS` for consistent ordering
+- Collision handling: Automatic suffix incrementing (_2, _3, etc.) until unique directory found
+- Git info capture: Uses subprocess with 5-second timeout, returns "not_in_repo" if not available
+- Environment capture: Uses importlib.metadata for faster package retrieval than pip freeze
+
+**Verification**
+- No spacew imports found (only standard library + yaml)
+- All required methods present and functioning
+- LSP diagnostics: clean
+- File structure matches requirements exactly
+
+**Notes**
+- Module is completely independent from spacew
+- Ready to use for experiment tracking in the TSRM imputation pipeline
+- All critical constraints preserved (atomic mkdir, 4-fold structure, hybrid ID format)
+- Added get_model_dir() and get_eval_dir() methods as required by task specification
+
+## Task 12: Hyperparameter Search Grid
+
+### Date
+2026-02-19
+
+### Findings
+
+**ParameterGrid Pattern (from experiments/scheduler.py)**
+- `sklearn.model_selection.ParameterGrid` converts dict of lists to list of all combinations
+- Pattern: `configs = list(ParameterGrid(param_grid=hyper_paras))`
+- Can shuffle configs with `random.shuffle(configs)` for random search order
+
+**Grid Size Strategy**
+- Quick mode: 2^5 = 32 configs (≤50 as required)
+- Full mode: 2^7 = 128 configs (manageable for parallel execution)
+- Key hyperparameters to search:
+  - `attention_func`: entmax15 vs classic
+  - `N`: 1, 2 (number of layers)
+  - `h`: 4, 8 (number of heads)
+  - `encoding_size`: 64, 128
+  - `dropout`: 0.0, 0.1
+  - `learning_rate`: 0.0005, 0.001 (full only)
+  - `batch_size`: 32, 64 (full only)
+
+**Spacew Best SAITS Config (reference)**
+- n_layers=1, d_model=512, n_heads=4, batch_size=64
+- epochs=120, patience=20, lr=0.00019
+
+**CLI Design**
+- Required: `--config` for base YAML path
+- Optional: `--folds` (comma-separated or 'all'), `--epochs`, `--quick`, `--output`
+- Validates config file exists before proceeding
+
+### Files Created
+- `scripts/search_osse.py` - Hyperparameter search grid builder
+
+### Implementation Notes
+- Training loop intentionally NOT implemented (Task 13 responsibility)
+- base_config loaded but grid params will override defaults
+- parse_folds() helper supports both 'all' and explicit fold lists
+

@@ -43,41 +43,36 @@ def build_tsrm_config(yaml_cfg: Dict) -> Dict:
     Returns:
         Dictionary containing TSRM configuration with all required keys.
     """
+    data_cfg = yaml_cfg.get('data', {})
+    tsrm_cfg = yaml_cfg.get('tsrm', {})
+
     config = {
-        # Data dimensions
-        "feature_dimension": yaml_cfg.get("feature_dimension", 7),
-        "seq_len": yaml_cfg.get("seq_len", 96),
-        "pred_len": 0,  # HARDCODED - imputation, not forecasting
+        "feature_dimension": len(data_cfg.get('variables', [])),
+        "seq_len": data_cfg.get('window_size', 30),
+        "pred_len": 0,
 
-        # Model architecture
-        "encoding_size": yaml_cfg.get("encoding_size", 16),
-        "h": yaml_cfg.get("h", 4),
-        "N": yaml_cfg.get("N", 3),
-        "conv_dims": yaml_cfg.get("conv_dims", [[0.1, 1, -1], [0.2, 1, -1], [0.6, 1, -1]]),
-        "attention_func": yaml_cfg.get("attention_func", "classic"),
-        "batch_size": yaml_cfg.get("batch_size", 8),
-        "dropout": yaml_cfg.get("dropout", 0.25),
+        "encoding_size": tsrm_cfg.get("encoding_size", 16),
+        "h": tsrm_cfg.get("h", 4),
+        "N": tsrm_cfg.get("N", 3),
+        "conv_dims": tsrm_cfg.get("conv_dims", [[0.1, 1, -1], [0.2, 1, -1], [0.6, 1, -1]]),
+        "attention_func": tsrm_cfg.get("attention_func", "classic"),
+        "batch_size": tsrm_cfg.get("batch_size", 8),
+        "dropout": tsrm_cfg.get("dropout", 0.25),
 
-        # Normalization - HARDCODED to False for external normalization only
         "revin": False,
 
-        # Loss configuration
-        "loss_function_imputation": yaml_cfg.get("loss_function_imputation", "mse+mae"),
-        "loss_imputation_mode": yaml_cfg.get("loss_imputation_mode", "weighted_imputation"),
-        "loss_weight_alpha": yaml_cfg.get("loss_weight_alpha", 10.0),
+        "loss_function_imputation": tsrm_cfg.get("loss_function_imputation", "mse+mae"),
+        "loss_imputation_mode": tsrm_cfg.get("loss_imputation_mode", "weighted_imputation"),
+        "loss_weight_alpha": tsrm_cfg.get("loss_weight_alpha", 10.0),
 
-        # Masking - HARDCODED to 0 for external masking
         "missing_ratio": 0.0,
 
-        # Time features
-        "embed": "timeF",
-        "freq": "t",
+        "embed": tsrm_cfg.get("embed", "timeF"),
+        "freq": tsrm_cfg.get("freq", "t"),
 
-        # Mask configuration
-        "mask_size": yaml_cfg.get("mask_size", 10),
-        "mask_count": yaml_cfg.get("mask_count", 4),
+        "mask_size": tsrm_cfg.get("mask_size", 10),
+        "mask_count": tsrm_cfg.get("mask_count", 4),
 
-        # REQUIRED by Transformations.__init__ at model.py:224
         "task": "imputation",
         "phase": "downstream",
     }
