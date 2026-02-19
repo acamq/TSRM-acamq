@@ -162,3 +162,6 @@ cython_debug/
 #.idea/
 
 !/experiment_intern/credentials.yml
+
+.sisyphus
+data_dir.zip
