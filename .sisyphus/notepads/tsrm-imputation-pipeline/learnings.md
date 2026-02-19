@@ -569,3 +569,12 @@ python scripts/evaluate_osse.py \
 ### Verification
 - `lsp_diagnostics` clean for `tests/test_e2e.py`.
 - `pytest tests/test_e2e.py` executed; suite is skipped in current environment because optional ML dependency is unavailable.
+
+## 2026-02-19 F4 Scope Fidelity Findings
+- Hardcoded overrides in build_tsrm_config are correctly enforced (, , , ).
+- Existing TSRM core files remained untouched in the inspected range (, , ).
+- Several modules diverge from plan contracts (notably loader API, baselines API, search script execution scope, and evaluation output naming).
+
+## 2026-02-19 F4 Scope Fidelity Findings (Correction)
+- Hardcoded overrides in build_tsrm_config are correctly enforced for revin=False, missing_ratio=0.0, task=imputation, and phase=downstream.
+- Existing TSRM core files remained untouched in the inspected range: architecture/model.py, architecture/loss_functions.py, architecture/utils.py.

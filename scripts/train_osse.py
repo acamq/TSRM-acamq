@@ -296,12 +296,6 @@ def train_fold(
         missing_rate=missing_rate,
         seed=fold_seed + 500,
     )
-    test_masked, _, test_rate = apply_missing_pattern(
-        data=test_windows,
-        pattern=missing_pattern,
-        missing_rate=missing_rate,
-        seed=fold_seed + 900,
-    )
 
     model_cfg = build_tsrm_config(config)
     requested_batch_size = int(model_cfg.get("batch_size", 32))
@@ -371,12 +365,11 @@ def train_fold(
         "split": split,
         "train_samples": int(train_masked.shape[0]),
         "val_samples": int(val_masked.shape[0]),
-        "test_samples": int(test_masked.shape[0]),
+        "test_samples": int(test_windows.shape[0]),
         "missing_pattern": missing_pattern,
         "missing_rate": float(missing_rate),
         "realized_train_rate_mean": float(np.mean(train_rates)) if train_rates else 0.0,
         "realized_val_rate": float(val_rate),
-        "realized_test_rate": float(test_rate),
         "batch_size": batch_size,
         "max_epochs": max_epochs,
         "best_checkpoint": checkpoint_callback.best_model_path,
