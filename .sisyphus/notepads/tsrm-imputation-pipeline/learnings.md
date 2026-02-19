@@ -554,3 +554,18 @@ python scripts/evaluate_osse.py \
 - Missing checkpoint: Falls back to `last.ckpt` or raises error
 - Non-finite skill scores: Converted to strings for JSON serialization
 - Empty test windows: Raises ValueError
+
+## Task 17: E2E Integration Test
+
+### Date
+2026-02-19
+
+### Findings
+- Added `tests/test_e2e.py` with synthetic-data integration coverage across config translation, model instantiation, dataset tuple output, masking behavior, metrics calculation, and baseline imputation.
+- Test config is intentionally minimal for quick execution (`window_size=5`, `N=1`, `encoding_size=16`, `batch_size=4`, `epochs=2`) while still matching required TSRM keys.
+- `pytest.importorskip("torch")` and `pytest.importorskip("lightning")` keep the test safe in lightweight environments without ML dependencies.
+- Baseline test uses partial NaN windows (not all-NaN feature traces) so `locf_impute` and `linear_interp_impute` are expected to return fully finite arrays.
+
+### Verification
+- `lsp_diagnostics` clean for `tests/test_e2e.py`.
+- `pytest tests/test_e2e.py` executed; suite is skipped in current environment because optional ML dependency is unavailable.
