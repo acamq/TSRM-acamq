@@ -461,3 +461,96 @@ Date: 2026-02-19 08:20:58
 - base_config loaded but grid params will override defaults
 - parse_folds() helper supports both 'all' and explicit fold lists
 
+
+## Task 13: Training Script with 4-Fold CV
+
+### Date
+2026-02-19
+
+### Findings
+- Created `scripts/train_osse.py` with CLI flags: `--config`, `--fold`, `--all-folds`, `--missing-pattern`, `--missing-rate`, `--epochs`, `--experiment-name`.
+- Implemented canonical fold mapping for leave-one-block-out CV:
+  - Fold 0: train [2,3], val [1], test [0]
+  - Fold 1: train [0,3], val [2], test [1]
+  - Fold 2: train [0,1], val [3], test [2]
+  - Fold 3: train [1,2], val [0], test [3]
+- Per-fold scaler fitting is done strictly on TRAIN blocks (`np.concatenate(train_blocks, axis=1)` then `Preprocessor.fit(...)`), then applied to train/val blocks.
+- Window generation uses `Preprocessor.create_windows_3d(...)` on already split block lists, so windows cannot cross block boundaries.
+- Training masking applies augmentation by repeating `apply_missing_pattern(...)` over train windows with different seeds; validation masking is single-pass (no augmentation).
+- Dataloaders are built from externally masked windows; model is `TSRMImputationExternal` configured via `build_tsrm_config(...)`.
+- PyTorch Lightning training loop includes `EarlyStopping(monitor='loss')` and `ModelCheckpoint(save_top_k=1, save_last=True)` per fold directory under experiment tracker.
+- Script saves per-fold scaler (`scaler.pkl`) and `fold_summary.json`, plus experiment-level `training_summary.json` and metadata via `ExperimentTracker`.
+- To keep `--help` usable even without heavy ML dependencies, torch-dependent imports (`TSRMImputationExternal`, `create_dataloaders`) are delayed inside `train_fold()`.
+
+### Follow-up
+- Confirmed `scripts/train_osse.py` exists at repo path and rewrote it with direct block-slice -> preprocess -> window -> mask -> train flow plus required CLI flags.
+
+## Task 13: Training Script Hardening Pass
+
+### Date
+2026-02-19
+
+### Findings
+- Added compatibility fallback for preprocessor helpers: script first looks for module-level `prepare_splits_block_level` / `create_windows_3d`, then falls back to `Preprocessor` instance methods.
+- Added batch-size compatibility guard: chooses the largest batch size that evenly divides both train and val sample counts to avoid TSRM reshape failures on partial batches.
+- Added runtime-safe dependency loading so `python scripts/train_osse.py --help` works even when training dependencies (`torch`, Lightning) are not installed.
+- Kept strict fold definitions and train-only scaler fit; test windows are still generated and masked for per-fold accounting even though training uses train/val loaders only.
+
+### Verification
+- `lsp_diagnostics` clean for `scripts/train_osse.py`.
+- `python -m py_compile scripts/train_osse.py` passes.
+- `python scripts/train_osse.py --help` returns expected CLI arguments.
+
+## Task 14: Evaluation Script
+
+### Date
+2026-02-19
+
+### Findings
+
+**Evaluation Script Created**
+- File: `scripts/evaluate_osse.py`
+- 450+ lines of production-ready code
+
+**Key Components**
+1. **Model Loading**: Uses `TSRMImputationExternal.load_from_checkpoint()` with fallback to `last.ckpt` if `best.ckpt` not found
+2. **Inference**: Calls `model.impute(masked, original, time_marks_x, time_marks_y)` for each window
+3. **Time Marks**: Creates zero tensors of shape `[batch, window_size, 5]` - model expects 5 time features
+4. **Baselines**: Uses `locf_impute()` and `linear_interp_impute()` from `pipeline/evaluation/baselines.py`
+5. **Shared Eval Mask**: Uses `compute_shared_eval_mask()` to ensure fair comparison across methods
+6. **Metrics**: Computes MSE/MAE via `compute_metrics()` and skill scores via `compute_skill_scores_vs_baselines()`
+7. **Per-Variable**: Uses `compute_metrics_per_variable()` with baseline skill scores
+
+**Fold Structure (same as train_osse.py)**
+```python
+FOLD_DEFINITIONS = {
+    0: {"train": [2, 3], "val": [1], "test": [0]},
+    1: {"train": [0, 3], "val": [2], "test": [1]},
+    2: {"train": [0, 1], "val": [3], "test": [2]},
+    3: {"train": [1, 2], "val": [0], "test": [3]},
+}
+```
+
+**Usage**
+```bash
+python scripts/evaluate_osse.py \
+    --config configs/osse_default.yaml \
+    --experiment-dir outputs/experiments/tsrm_osse_XXX \
+    --fold 0 \
+    --missing-pattern point \
+    --missing-rate 0.2
+```
+
+**Output JSON Structure**
+- `tsrm`: MSE/MAE metrics for TSRM
+- `locf`/`linear`: Baseline metrics
+- `skill_vs_locf`/`skill_vs_linear`: MSESS/MAESS skill scores
+- `per_variable`: Per-variable metrics with skill scores
+- `n_excluded`: Number of positions excluded from shared mask
+- `exclusion_reasons`: Which methods caused NaN exclusions
+
+**Edge Cases Handled**
+- Missing scaler file: Raises FileNotFoundError
+- Missing checkpoint: Falls back to `last.ckpt` or raises error
+- Non-finite skill scores: Converted to strings for JSON serialization
+- Empty test windows: Raises ValueError
