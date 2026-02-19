@@ -578,3 +578,31 @@ python scripts/evaluate_osse.py \
 ## 2026-02-19 F4 Scope Fidelity Findings (Correction)
 - Hardcoded overrides in build_tsrm_config are correctly enforced for revin=False, missing_ratio=0.0, task=imputation, and phase=downstream.
 - Existing TSRM core files remained untouched in the inspected range: architecture/model.py, architecture/loss_functions.py, architecture/utils.py.
+
+## Fix test_tsrm_external.py - Batch Size Mismatch
+
+### Date
+2026-02-19
+
+### Findings
+
+**Batch Size Mismatch in Tests**
+- TSRM model internally reshapes input from `[batch, seq, features]` to `[batch*features, seq, 1]`
+- This means the configured `batch_size` must match the actual input batch size
+- Test config has `batch_size=4` but `test_nan_handling` was using B=2, causing shape mismatch:
+  - Model expects batch_size=4, so internal shape would be [4*8=32, 30, 1]
+  - But input had B=2, so internal shape was [2*8=16, 30, 1]
+  - This caused fin_ff shape mismatch error
+
+**Fix Applied**
+- Changed `B, T, F = 2, 30, 8` to `B, T, F = 4, 30, 8` in `test_nan_handling()`
+- `test_forward_shape` already correctly uses B=4 (matches config batch_size=4)
+
+**Verification**
+- `pytest tests/test_tsrm_external.py::test_nan_handling` - PASSED
+- All 3 tests in test_tsrm_external.py pass successfully
+
+**Key Learning**
+- TSRM model is sensitive to batch size mismatches between config and input
+- The internal reshape operation `[batch, seq, features] -> [batch*features, seq, 1]` depends on exact batch size
+- Always ensure test batch sizes match configured `batch_size` in model config

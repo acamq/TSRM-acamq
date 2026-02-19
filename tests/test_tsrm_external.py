@@ -65,7 +65,7 @@ def test_nan_handling():
     model = TSRMImputationExternal(config)
     model.eval()
 
-    B, T, F = 2, 30, 8
+    B, T, F = 4, 30, 8
     masked_data = torch.randn(B, T, F)
     masked_data[:, 5:10, :] = float('nan')
     original_data = torch.randn(B, T, F)
