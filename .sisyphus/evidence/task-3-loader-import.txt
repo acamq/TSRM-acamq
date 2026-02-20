@@ -1,0 +1,5 @@
+Import OK
+Has load(): True
+Has load_pickle(): True
+Has to_multivariate_array(): True
+Has validate_no_cross_block_windows(): True

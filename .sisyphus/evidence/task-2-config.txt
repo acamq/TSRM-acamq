@@ -1,0 +1,59 @@
+Task 2: Config Module Test Results
+=====================================
+
+Test 1: Import config module
+[OK] Import successful
+
+Test 2: load_config function
+[OK] YAML loaded successfully
+  Top-level keys: ['root_path', 'data_path', 'data', 'features', 'target', 'freq', 'num_workers', 'seq_len', 'pred_len', 'label_len', 'feature_dimension', 'embed', 'lr_optimizer', 'validation_size', 'test_size', 'optimizer', 'batch_size', 'shuffle', 'shuffle_seed', 'h', 'encoding_size', 'N', 'conv_dims', 'n_kernel', 'attention_func', 'dropout', 'add_pooled_representations', 'split_feature_encoding', 'revin', 'loss_function_forecasting', 'earlystopping_patience', 'earlystopping_min_delta', 'earlystopping_percentage', 'mask_size', 'mask_var_length', 'mask_count', 'mask_offset', 'loss_function_imputation', 'loss_imputation_mode', 'loss_weight_alpha', 'loss_weight_beta']
+
+Test 3: build_tsrm_config function
+[OK] TSRM config built successfully
+
+Test 4: Required keys check
+[OK] All required keys present (21)
+Required keys:
+- feature_dimension
+- seq_len
+- pred_len
+- encoding_size
+- h
+- N
+- conv_dims
+- attention_func
+- batch_size
+- dropout
+- revin
+- loss_function_imputation
+- loss_imputation_mode
+- loss_weight_alpha
+- missing_ratio
+- embed
+- freq
+- mask_size
+- mask_count
+- task
+- phase
+
+Test 5: Hard-coded values
+[OK] task = imputation (enforced)
+[OK] phase = downstream (enforced)
+[OK] revin = False (enforced)
+[OK] missing_ratio = 0.0 (enforced)
+
+Test 6: Config values from YAML
+[OK] feature_dimension = 7 (from YAML)
+[OK] seq_len = 96 (from YAML)
+[OK] encoding_size = 16 (from YAML)
+[OK] h = 4 (from YAML)
+[OK] N = 3 (from YAML)
+[OK] batch_size = 8 (from YAML)
+[OK] dropout = 0.25 (from YAML)
+[OK] loss_function_imputation = mse+mae (from YAML)
+[OK] loss_imputation_mode = weighted_imputation (from YAML)
+[OK] loss_weight_alpha = 10 (from YAML)
+
+==================================================
+ALL TESTS PASSED
+==================================================

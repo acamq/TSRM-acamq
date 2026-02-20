@@ -1,0 +1,36 @@
+TASK 7: Baselines - Create pipeline/evaluation/baselines.py adapted from spacew
+================================================================================
+
+DATE: Thu Feb 19 2026
+
+VERIFICATION RESULTS:
+---------------------
+✓ File exists: pipeline/evaluation/baselines.py
+✓ Module imports successfully
+✓ Function locf_impute() working
+✓ Function linear_interp_impute() working
+✓ Helper functions present: get_available_baselines(), apply_baseline()
+
+TEST OUTPUT:
+------------
+Available baselines: ['locf', 'linear']
+LOCF result: [[[1. 2.]
+  [1. 4.]
+  [3. 4.]]]
+Linear result: [[[1. 2.]
+  [2. 4.]
+  [3. 4.]]]
+Tests passed!
+
+FUNCTION SIGNATURES (from source):
+-----------------------------------
+- locf_impute(data: np.ndarray) -> np.ndarray
+- linear_interp_impute(data: np.ndarray) -> np.ndarray
+- get_available_baselines() -> list
+- apply_baseline(data: np.ndarray, method: str) -> np.ndarray
+
+NOTE: Functions take only `data` parameter (not `mask` as mentioned in task).
+The source implementation detects missing values directly from NaN in data.
+
+VERIFICATION: PASSED
+====================

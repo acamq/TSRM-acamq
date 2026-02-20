@@ -1,0 +1,28 @@
+=== Task 6: Evaluation Metrics - QA Evidence ===
+
+Import test:
+- Successfully imported: compute_metrics, compute_skill_scores_vs_baselines, compute_shared_eval_mask
+
+Functional tests:
+
+1. compute_metrics():
+   - MSE: 0.25 (expected: ((1.5-1)^2 + (4.5-4)^2)/2 = 0.25)
+   - MAE: 0.5 (expected: (|1.5-1| + |4.5-4|)/2 = 0.5)
+   ✓ PASS
+
+2. compute_skill_score():
+   - Skill score (2.0/4.0): 0.5
+   ✓ PASS
+
+3. compute_shared_eval_mask() with variadic args:
+   - Shared mask: [[ True False  True]]
+   - excluded: 0
+   - reasons: []
+   ✓ PASS
+
+Key adaptations from spacew:
+- Updated compute_shared_eval_mask() to accept *method_outputs instead of named parameters
+- Maintains all core functionality (MSE, MAE, skill scores, per-variable metrics)
+- Preserves eps=1e-10 division-by-zero handling
+- Maintains mask convention: 1=observed, 0=missing
+- NO references to spacew package in imports

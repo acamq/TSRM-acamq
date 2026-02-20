@@ -1,0 +1,54 @@
+TASK 5: MASKING MODULE - VERIFICATION EVIDENCE
+===================================================
+
+Date: 2025-02-19
+Source: spacew/src/spacew/data/masking.py
+Target: pipeline/data/masking.py
+
+=== Test 1: Import success ===
+All functions imported successfully
+
+=== Test 2: Point MCAR pattern ===
+Target rate: 0.20, Achieved rate: 0.2000
+Rate difference: 0.0000
+Masked data shape: (10, 100, 5)
+NaN count in masked: 1000
+Original unchanged: True
+
+=== Test 3: Subsequence pattern ===
+Target rate: 0.15, Achieved rate: 0.1500
+Rate difference: 0.0000
+Masked data shape: (6, 100, 4)
+NaN count in masked: 360
+
+=== Test 4: Block pattern ===
+Target rate: 0.20, Achieved rate: 0.2000
+Rate difference: 0.0000
+Masked data shape: (6, 100, 4)
+NaN count in masked: 480
+
+=== Test 5: Unified interface ===
+Pattern point   : rate=0.1000, NaNs=60
+Pattern subseq  : rate=0.1000, NaNs=60
+Pattern block   : rate=0.1000, NaNs=60
+
+=== Test 6: Pre-existing NaNs excluded ===
+Pre-existing NaNs: 300
+Total NaNs after masking: 540
+Artificial NaNs added: 240
+Rate (of observed only): 0.2000
+
+=== All tests passed! ===
+
+VERIFICATION SUMMARY:
+- File: pipeline/data/masking.py exists and is complete (226 lines)
+- All functions import correctly
+- Three patterns supported: point, subseq, block
+- Exact rate enforcement works (rate differences < 0.0001)
+- Pre-existing NaNs correctly excluded from rate calculation
+- Original data remains unchanged (copy-on-write)
+- No spacew-specific imports (only numpy and typing)
+- Returns tuple: (masked_data, artificial_mask, realized_rate)
+- Mask convention: artificial_mask is boolean True where masked
+
+SUCCESS: All requirements met.
