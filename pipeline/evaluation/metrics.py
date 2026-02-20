@@ -14,9 +14,7 @@ import numpy as np
 def compute_shared_eval_mask(
     artificial_mask: np.ndarray,
     truth: np.ndarray,
-    pred_saits: np.ndarray,
-    pred_locf: np.ndarray,
-    pred_linear: np.ndarray
+    *method_outputs: np.ndarray
 ) -> Tuple[np.ndarray, int, List[str]]:
     """Create shared evaluation mask that excludes NaNs from ANY method.
 
@@ -25,11 +23,9 @@ def compute_shared_eval_mask(
     are excluded for ALL methods (not just the NaN-producing method).
 
     Args:
-        artificial_mask: Boolean array of artificially masked positions
+        artificial_mask: Boolean array of artificially masked positions (1=observed, 0=missing)
         truth: Ground truth array
-        pred_saits: SAITS predictions
-        pred_locf: LOCF baseline predictions
-        pred_linear: Linear interpolation predictions
+        *method_outputs: Variable number of method prediction arrays
 
     Returns:
         tuple: (shared_mask, n_excluded, exclusion_reason)
@@ -38,30 +34,26 @@ def compute_shared_eval_mask(
             - exclusion_reason: List of strings describing why points were excluded
     """
     valid = (
-        artificial_mask &
-        np.isfinite(truth) &
-        np.isfinite(pred_saits) &
-        np.isfinite(pred_locf) &
-        np.isfinite(pred_linear)
+        artificial_mask.astype(bool) &
+        np.isfinite(truth)
     )
 
-    n_excluded = int(artificial_mask.sum() - valid.sum())
+    # Add finite check for each method output
+    for method_pred in method_outputs:
+        valid = valid & np.isfinite(method_pred)
+
+    n_excluded = int(artificial_mask.astype(bool).sum() - valid.sum())
     exclusion_reason: List[str] = []
     if n_excluded > 0:
         # Identify which methods caused exclusions
-        saits_nan = artificial_mask & ~np.isfinite(pred_saits)
-        locf_nan = artificial_mask & ~np.isfinite(pred_locf)
-        linear_nan = artificial_mask & ~np.isfinite(pred_linear)
-        truth_nan = artificial_mask & ~np.isfinite(truth)
-
-        if saits_nan.any():
-            exclusion_reason.append(f'saits:{int(saits_nan.sum())}')
-        if locf_nan.any():
-            exclusion_reason.append(f'locf:{int(locf_nan.sum())}')
-        if linear_nan.any():
-            exclusion_reason.append(f'linear:{int(linear_nan.sum())}')
+        truth_nan = artificial_mask.astype(bool) & ~np.isfinite(truth)
         if truth_nan.any():
             exclusion_reason.append(f'truth:{int(truth_nan.sum())}')
+
+        for i, method_pred in enumerate(method_outputs):
+            method_nan = artificial_mask.astype(bool) & ~np.isfinite(method_pred)
+            if method_nan.any():
+                exclusion_reason.append(f'method_{i}:{int(method_nan.sum())}')
 
     return valid, n_excluded, exclusion_reason
 
