@@ -143,3 +143,89 @@ class TestE2EPipeline:
 
         assert not np.isnan(locf_result).any()
         assert not np.isnan(linear_result).any()
+
+    def test_e2e_pipeline(self):
+        torch = pytest.importorskip("torch")
+        lightning = pytest.importorskip("lightning")
+
+        from architecture.tsrm_external import TSRMImputationExternal
+        from pipeline.data.dataset import OSSEDataset
+        from pipeline.data.masking import apply_missing_pattern
+        from pipeline.evaluation.metrics import compute_metrics
+
+        rng = np.random.default_rng(123)
+        n_samples = 12
+        window_size = 5
+        n_features = 3
+        batch_size = 4
+
+        model_cfg = {
+            "feature_dimension": n_features,
+            "seq_len": window_size,
+            "pred_len": 0,
+            "encoding_size": 16,
+            "h": 2,
+            "N": 1,
+            "conv_dims": [[3, 1, 1]],
+            "attention_func": "classic",
+            "batch_size": batch_size,
+            "dropout": 0.1,
+            "revin": False,
+            "missing_ratio": 0.0,
+            "loss_function_imputation": "mse+mae",
+            "loss_imputation_mode": "imputation",
+            "loss_weight_alpha": 0.5,
+            "embed": "timeF",
+            "freq": "t",
+            "mask_size": 2,
+            "mask_count": 1,
+            "task": "imputation",
+            "phase": "downstream",
+        }
+
+        full_data = rng.normal(size=(n_samples, window_size, n_features)).astype(np.float32)
+        train_original = full_data[:8]
+        val_original = full_data[8:10]
+        test_original = full_data[10:]
+
+        train_masked, _, _ = apply_missing_pattern(train_original.copy(), "point", 0.2, seed=1)
+        val_masked, _, _ = apply_missing_pattern(val_original.copy(), "point", 0.2, seed=2)
+        test_masked, test_mask, _ = apply_missing_pattern(test_original.copy(), "point", 0.2, seed=3)
+
+        train_ds = OSSEDataset(train_masked, train_original, timestamps=None, freq="t")
+        val_ds = OSSEDataset(val_masked, val_original, timestamps=None, freq="t")
+        test_ds = OSSEDataset(test_masked, test_original, timestamps=None, freq="t")
+
+        train_dl = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True)
+        val_dl = torch.utils.data.DataLoader(val_ds, batch_size=batch_size, shuffle=False)
+        test_dl = torch.utils.data.DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+
+        model = TSRMImputationExternal(model_cfg)
+        model.lr = 1e-3
+
+        trainer = lightning.Trainer(
+            max_epochs=1,
+            accelerator="cpu",
+            devices=1,
+            logger=False,
+            enable_checkpointing=False,
+            enable_model_summary=False,
+            enable_progress_bar=False,
+            num_sanity_val_steps=0,
+            limit_train_batches=1,
+            limit_val_batches=1,
+        )
+        trainer.fit(model, train_dataloaders=train_dl, val_dataloaders=val_dl)
+
+        masked_batch, truth_batch, time_marks_x, time_marks_y = next(iter(test_dl))
+        imputed = model.impute(masked_batch, truth_batch, time_marks_x, time_marks_y)
+
+        metrics = compute_metrics(
+            imputed.detach().cpu().numpy(),
+            truth_batch.detach().cpu().numpy(),
+            test_mask,
+        )
+
+        assert imputed.shape == truth_batch.shape
+        assert np.isfinite(metrics["mse"])
+        assert np.isfinite(metrics["mae"])
