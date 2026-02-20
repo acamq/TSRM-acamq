@@ -183,11 +183,16 @@ def pick_batch_size(requested: int, train_samples: int, val_samples: int) -> int
             f"Both train and val must be non-empty: train={train_samples}, val={val_samples}"
         )
 
-    upper = min(requested, train_samples, val_samples)
-    for candidate in range(upper, 0, -1):
-        if train_samples % candidate == 0 and val_samples % candidate == 0:
-            return candidate
-    return 1
+    return max(1, min(requested, train_samples))
+
+
+def resolve_num_workers(training_cfg: Dict[str, Any]) -> int:
+    configured = training_cfg.get("num_workers")
+    if configured is not None:
+        return max(0, int(configured))
+
+    cpu_count = os.cpu_count() or 4
+    return min(12, max(4, cpu_count // 4))
 
 
 def resolve_trainer_settings(training_cfg: Dict[str, Any]) -> Tuple[str, str, float]:
@@ -305,8 +310,13 @@ def train_fold(
     if batch_size != requested_batch_size:
         print(
             f"Fold {fold_idx}: adjusted batch size {requested_batch_size} -> {batch_size} "
-            "to avoid partial batches"
+            "to fit available samples"
         )
+
+    num_workers = resolve_num_workers(train_cfg)
+    pin_memory = bool(train_cfg.get("pin_memory", True))
+    persistent_workers = bool(train_cfg.get("persistent_workers", True))
+    prefetch_factor = int(train_cfg.get("prefetch_factor", 4))
 
     train_dl, val_dl = create_dataloaders(
         train_masked=train_masked,
@@ -316,7 +326,12 @@ def train_fold(
         val_original=val_windows,
         val_timestamps=None,
         batch_size=batch_size,
-        num_workers=int(train_cfg.get("num_workers", 0)),
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers,
+        prefetch_factor=prefetch_factor,
+        drop_last_train=True,
+        drop_last_val=False,
         freq=str(model_cfg.get("freq", "t")),
     )
 
