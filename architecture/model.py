@@ -218,7 +218,6 @@ class Transformations(nn.Module):
         self.revin = RevIN(num_features=config["feature_dimension"], affine=True, subtract_last=False) if config.get(
             "revin", True) else None
 
-        self.batch_size = config["batch_size"]
         self.feature_dimension = config["feature_dimension"]
 
         if self.config["phase"] != "pretrain" and self.config["task"] == "forecasting":
@@ -250,12 +249,20 @@ class Transformations(nn.Module):
         if mask is not None:
             x = torch.masked_fill(x, mask, -1)
 
-        x = x.transpose(-2, -1).reshape(self.batch_size * self.feature_dimension, -1).unsqueeze(-1)
+        batch_size = x.shape[0]
+        x = x.transpose(-2, -1).reshape(batch_size * self.feature_dimension, -1).unsqueeze(-1)
         return x
 
     def reverse(self, x):
+        flat_batch = x.shape[0]
+        if flat_batch % self.feature_dimension != 0:
+            raise ValueError(
+                f"Unexpected tensor shape in reverse: first dim {flat_batch} is not divisible "
+                f"by feature_dimension={self.feature_dimension}"
+            )
 
-        x = x.squeeze(-1).reshape(self.batch_size, self.feature_dimension, -1).transpose(-2, -1)
+        batch_size = flat_batch // self.feature_dimension
+        x = x.squeeze(-1).reshape(batch_size, self.feature_dimension, -1).transpose(-2, -1)
         # if self.requires_transform:
         #     x = x - torch.abs(self.global_minimums.values).unsqueeze(1)
 

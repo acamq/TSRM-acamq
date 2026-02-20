@@ -38,17 +38,17 @@ def calc_metrics(output=None, target=None, mask=None, scaler=None, classificatio
 
     ts_loss = {
         # all
-        prefix + "mae_all": float(mean_absolute_error(output, target)),
+        prefix + "mae_all": float(mean_absolute_error(output.reshape(-1), target.reshape(-1))),
         prefix + "mse_all": float(mean_squared_error(output.reshape(-1), target.reshape(-1))),
         prefix + "rmse_all": float(torch.sqrt(mean_squared_error(output.reshape(-1), target.reshape(-1)))),
 
         # missing
-        prefix + "mae_missing": float(mean_absolute_error(output[mask], target[mask])),
+        prefix + "mae_missing": float(mean_absolute_error(output[mask].reshape(-1), target[mask].reshape(-1))),
         prefix + "mse_missing": float(mean_squared_error(output[mask].reshape(-1), target[mask].reshape(-1))),
         prefix + "rmse_missing": float(torch.sqrt(mean_squared_error(output[mask].reshape(-1), target[mask].reshape(-1)))),
 
         # reproduce
-        prefix + "mae_reproduce": float(mean_absolute_error(output[~mask], target[~mask])),
+        prefix + "mae_reproduce": float(mean_absolute_error(output[~mask].reshape(-1), target[~mask].reshape(-1))),
         prefix + "mse_reproduce": float(mean_squared_error(output[~mask].reshape(-1), target[~mask].reshape(-1))),
         prefix + "rmse_reproduce": float(torch.sqrt(mean_squared_error(output[~mask].reshape(-1), target[~mask].reshape(-1)))),
 
@@ -61,17 +61,17 @@ def calc_metrics(output=None, target=None, mask=None, scaler=None, classificatio
         mask = mask.detach().cpu()
         real_loss = {
             # all real
-            "mae_all_real": float(mean_absolute_error(rescaled_output, rescaled_target)),
+            "mae_all_real": float(mean_absolute_error(rescaled_output.reshape(-1), rescaled_target.reshape(-1))),
             "mse_all_real": float(mean_squared_error(rescaled_output.reshape(-1), rescaled_target.reshape(-1))),
             "rmse_all_real": float(torch.sqrt(mean_squared_error(rescaled_output.reshape(-1), rescaled_target.reshape(-1)))),
 
             # missing real
-            "mae_missing_real": float(mean_absolute_error(rescaled_output[mask], rescaled_target[mask])),
+            "mae_missing_real": float(mean_absolute_error(rescaled_output[mask].reshape(-1), rescaled_target[mask].reshape(-1))),
             "mse_missing_real": float(mean_squared_error(rescaled_output[mask].reshape(-1), rescaled_target[mask].reshape(-1))),
             "rmse_missing_real": float(torch.sqrt(mean_squared_error(rescaled_output[mask].reshape(-1), rescaled_target[mask].reshape(-1)))),
 
             # reproduce real
-            "mae_reproduce_real": float(mean_absolute_error(rescaled_output[~mask], rescaled_target[~mask])),
+            "mae_reproduce_real": float(mean_absolute_error(rescaled_output[~mask].reshape(-1), rescaled_target[~mask].reshape(-1))),
             "mse_reproduce_real": float(mean_squared_error(rescaled_output[~mask].reshape(-1), rescaled_target[~mask].reshape(-1))),
             "rmse_reproduce_real": float(torch.sqrt(mean_squared_error(rescaled_output[~mask].reshape(-1), rescaled_target[~mask].reshape(-1)))),
 
