@@ -97,21 +97,35 @@ def create_dataloaders(
     val_timestamps: Optional[np.ndarray],
     batch_size: int = 32,
     num_workers: int = 0,
+    pin_memory: bool = False,
+    persistent_workers: bool = False,
+    prefetch_factor: int = 2,
+    drop_last_train: bool = False,
+    drop_last_val: bool = False,
     freq: str = "t",
 ) -> Tuple[DataLoader, DataLoader]:
     train_ds = OSSEDataset(train_masked, train_original, train_timestamps, freq=freq)
     val_ds = OSSEDataset(val_masked, val_original, val_timestamps, freq=freq)
 
+    common_loader_kwargs = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+        "persistent_workers": persistent_workers and num_workers > 0,
+    }
+    if num_workers > 0:
+        common_loader_kwargs["prefetch_factor"] = prefetch_factor
+
     train_dl = DataLoader(
         train_ds,
-        batch_size=batch_size,
         shuffle=True,
-        num_workers=num_workers,
+        drop_last=drop_last_train,
+        **common_loader_kwargs,
     )
     val_dl = DataLoader(
         val_ds,
-        batch_size=batch_size,
         shuffle=False,
-        num_workers=num_workers,
+        drop_last=drop_last_val,
+        **common_loader_kwargs,
     )
     return train_dl, val_dl

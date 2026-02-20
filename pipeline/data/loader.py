@@ -195,3 +195,35 @@ class OSSEDataLoader:
                     break
 
         return True
+
+    def load(self) -> Dict:
+        """Load OSSE data and return in standardized format for TSRM pipeline.
+
+        Returns:
+            Dictionary with keys:
+            - 'data': numpy array of shape [6, 240, 8] (satellites, timesteps, features)
+            - 'timestamps': List of all timestamp strings
+            - 'variable_names': List of variable names loaded
+            - 'satellite_ids': List of satellite IDs [0, 1, 2, 3, 4, 5]
+        """
+        if self._data is None:
+            self.load_pickle()
+
+        metadata = self.get_metadata()
+        data_array = self.to_multivariate_array()
+
+        result = {
+            'data': data_array,
+            'timestamps': metadata.get('timestamps', []),
+            'variable_names': self.variables,
+            'satellite_ids': list(range(metadata.get('num_satellites', 6))),
+        }
+
+        expected_shape = (6, 240, len(self.variables))
+        if data_array.shape != expected_shape:
+            raise ValueError(
+                f"Data shape mismatch. Expected {expected_shape}, "
+                f"got {data_array.shape}"
+            )
+
+        return result

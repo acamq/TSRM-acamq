@@ -1,4 +1,4 @@
-"""Normalization and windowing for spacew package."""
+"""Normalization and windowing for TSRM pipeline."""
 
 import pickle
 from pathlib import Path
