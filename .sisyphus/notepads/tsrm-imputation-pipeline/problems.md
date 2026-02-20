@@ -5,3 +5,9 @@
 
 ## 2026-02-19 Open Problems (Correction)
 - Environment currently lacks torch, preventing full pytest verification in this workspace.
+
+## 2026-02-19 Task 12 Open Problem
+- Quick search smoke run remains blocked until training dependencies are installed (`torch` and Lightning stack).
+
+## 2026-02-19 New Open Problem
+- Training loop currently fails with an in-place autograd runtime error after model initialization; this is separate from the fixed Conv1d `conv_dims` type issue and requires a dedicated debugging pass.

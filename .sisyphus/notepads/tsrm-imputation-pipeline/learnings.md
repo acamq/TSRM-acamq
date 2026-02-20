@@ -606,3 +606,294 @@ python scripts/evaluate_osse.py \
 - TSRM model is sensitive to batch size mismatches between config and input
 - The internal reshape operation `[batch, seq, features] -> [batch*features, seq, 1]` depends on exact batch size
 - Always ensure test batch sizes match configured `batch_size` in model config
+
+- Created usage documentation  for the TSRM imputation pipeline.
+- Verified project file structure matches the documentation.
+- Documented key design decisions including external masking and per-fold scaling.
+
+- Created usage documentation `README_pipeline.md` for the TSRM imputation pipeline.
+- Verified project file structure matches the documentation.
+- Documented key design decisions including external masking and per-fold scaling.
+
+## Task 7: Baselines Module
+
+### Date
+2026-02-19
+
+### Findings
+
+**Baselines Module Copy (Task 7)**
+- Successfully copied `baselines.py` from spacew project to `pipeline/evaluation/baselines.py`
+- Source file: `C:\Users\aic\liua\work\projects\spacew_root\github\spacew\src\spacew\evaluation\baselines.py`
+- Destination: `pipeline/evaluation/baselines.py`
+
+**Module Characteristics**
+- Self-contained module with only numpy and pandas dependencies
+- No spacew imports present (verified)
+- LSP diagnostics: No errors in the new file
+- All functions preserved as-is:
+  - `locf_impute(data)` - Last Observation Carried Forward with backward-fill for leading NaN
+  - `linear_interp_impute(data)` - Pandas interpolate(method='linear', limit_direction='both')
+  - `get_available_baselines()` - Returns ['locf', 'linear']
+  - `apply_baseline(data, method)` - Main entry point with method validation
+
+**Edge Case Handling**
+- All-NaN features: Left as NaN (excluded from scoring)
+- Leading NaN: Uses backward-fill from first observed value
+- Input format: [n_samples, n_steps, n_features] with NaN for missing
+- Output format: Imputed array with NaN only where entire feature is missing
+
+**Key Observations**
+- No modifications needed to the source code
+- Module is completely independent from spacew
+- Ready to use for baseline comparisons in the evaluation pipeline
+- Functions take only `data` parameter (not `mask` as mentioned in task description)
+- The source implementation detects missing values directly from NaN in data
+
+**Verification**
+- Module imports successfully
+- `locf_impute()` correctly handles leading and middle NaN values
+- `linear_interp_impute()` correctly performs linear interpolation
+- Helper functions `get_available_baselines()` and `apply_baseline()` work as expected
+
+## Task 6: Metrics Module - Updated
+
+### Date (Revision)
+2026-02-19
+
+### Key Adaptation - compute_shared_eval_mask
+- Changed function signature from named parameters to variadic args:
+  - Old: `compute_shared_eval_mask(art_mask, truth, pred_saits, pred_locf, pred_linear)`
+  - New: `compute_shared_eval_mask(art_mask, truth, *method_outputs)`
+- This allows comparing arbitrary number of methods, not fixed set of 3
+- Updated logic to iterate over method_outputs with enumerate for exclusion reasons
+- Maintains all original behavior: shared mask excludes NaN from ANY method for fair comparison
+
+### Verification
+- Module imports cleanly with all required functions
+- compute_shared_eval_mask() works with variadic args
+- All core metrics functions verified (MSE, MAE, skill scores)
+- LSP diagnostics: clean
+- No spacew imports in the module
+
+
+## Task 2: Config Module - Updated (Fix)
+
+### Date (Revision)
+2026-02-19
+
+### Key Fix - YAML Structure Mismatch
+- Original build_tsrm_config() expected nested YAML structure (data section, tsrm section)
+- Actual TSRM YAML configs (e.g., imputation_etth1.yml) use flat structure with keys at top level
+- Solution: Updated build_tsrm_config() to read directly from yaml_cfg dict without nesting
+
+### Updated Implementation
+- Changed from: `data_cfg = yaml_cfg.get('data', {})` and `tsrm_cfg = yaml_cfg.get('tsrm', {})`
+- Changed to: Direct reading from yaml_cfg with sensible defaults
+- Example: `"feature_dimension": yaml_cfg.get("feature_dimension", 8)`
+
+### Default Value Adjustments
+- attention_func default changed from "classic" to "entmax15" (as per task requirements)
+- loss_imputation_mode default changed from "weighted_imputation" to "imputation"
+- loss_weight_alpha default changed from 10.0 to 1.0
+- All other defaults remain same
+
+### Verification
+- All 21 required keys present in build_tsrm_config()
+- Hard-coded values enforced (task, phase, revin, missing_ratio)
+- Config values from YAML preserved correctly
+- LSP diagnostics: clean on config.py
+- All tests pass (load_config, build_tsrm_config, required keys, hard-coded values, YAML values)
+
+## Task 1: Project Scaffolding (Re-verification)
+
+### Date
+2026-02-19 (Task already completed, re-verified)
+
+### Findings
+
+**Directory Structure**
+- All required directories already exist with correct structure:
+  - `pipeline/` with subdirectories: `data/`, `evaluation/`, `tracking/`, `visualization/`
+  - `scripts/` and `tests/`
+- All directories contain empty `__init__.py` files
+
+**Environment Configuration**
+- `.env` file already exists with actual values (not placeholders):
+  - `DATA_DIR=D:/projects/spacew/datasets/osse/data_files/output_numpy1252`
+  - `SCRATCH_DIR=S:/projects/tsrm`
+- Follows the pattern from SPACEW project
+
+**Dependencies**
+- `pytest~=7.4.0` already present in requirements.txt (line 13)
+- `python-dotenv~=1.0.0` already present in requirements.txt (line 14)
+- No additions needed
+
+**Evidence Directory**
+- `.sisyphus/evidence/` directory already exists
+
+**Verification**
+- All directory structure verifications passed
+- All `__init__.py` files verified
+- `.env` file verified
+- requirements.txt dependencies verified
+- Verification output saved to `.sisyphus/evidence/task-1-scaffolding.txt`
+
+**Key Observation**
+- Task 1 scaffolding work appears to have been completed previously
+- All expected files and directories are in place
+- No action required beyond verification
+## Task 3: OSSEDataLoader - Additional load() Method
+
+### Date
+2026-02-19
+
+### Findings
+
+**Added load() method to OSSEDataLoader**
+- The file already existed with most functionality from spacew
+- Added load() method to match task requirements for standardized dict output
+- load() returns dict with keys: 'data', 'timestamps', 'variable_names', 'satellite_ids'
+- Validates data shape is (6, 240, 8) for 6 satellites, 240 timesteps, 8 features
+
+**Verification**
+- No spacew imports present (verified via grep)
+- load() method exists and is callable
+- QA evidence saved to .sisyphus/evidence/task-3-loader-import.txt
+
+## Task 4: Preprocessor Module - Re-verification
+
+### Date
+2026-02-19 (Task already completed, re-verified)
+
+### Findings
+
+**Preprocessor Module Status**
+- File `pipeline/data/preprocessor.py` already exists and matches spacew source
+- Only change needed: Update module docstring from "spacew package" to "TSRM pipeline"
+- Module imports successfully: `NaNSafeScaler` and `Preprocessor` classes accessible
+
+**Module Characteristics Confirmed**
+- Self-contained module with only numpy and standard library dependencies
+- No spacew imports present (verified via grep and import test)
+- LSP diagnostics: No errors in the file
+- All core functionality preserved:
+  - `NaNSafeScaler` - Per-feature mean/std with [1, 1, F] shaped statistics
+  - `Preprocessor` - Log transform + scaler orchestration
+  - `prepare_splits_block_level()` - Block-level splitting for CV
+  - `create_windows_3d()` - Windowing with stride for 3D output
+
+**Critical Implementation Details Verified**
+- NaNSafeScaler.fit() computes mean/std over axes (0,1) → shape [1, 1, F]
+- NaNSafeScaler.transform() preserves NaN positions
+- Density variables get log1p transform with epsilon=1e-30
+- Fold definitions: Fold 0=[train 2,3 / val 1 / test 0], Fold 1=[train 0,3 / val 2 / test 1], Fold 2=[train 0,1 / val 3 / test 2], Fold 3=[train 1,2 / val 0 / test 3]
+- 3D windowing: Each satellite-window is a SEPARATE sample (no satellite dimension in output)
+
+**Key Learning**
+- The module was already correctly adapted from spacew
+- Only the docstring needed updating to reflect the correct project name
+- All critical normalization, splitting, and windowing logic is preserved
+
+**Verification**
+- Import test successful: `from pipeline.data.preprocessor import NaNSafeScaler, Preprocessor`
+- Evidence saved to `.sisyphus/evidence/task-4-preprocessor-import.txt`
+- LSP diagnostics: clean on preprocessor.py
+
+
+## Task 5: Masking Module (Re-verification)
+
+### Date
+2026-02-19
+
+### Findings
+
+**Masking Module Copy (Task 5 - Re-verified)**
+- File `pipeline/data/masking.py` already exists and is complete (226 lines)
+- Source file: `C:\Users\aic\liua\work\projects\spacew_root\github\spacew\src\spacew\data\masking.py`
+- Destination: `pipeline/data/masking.py`
+- Content is identical to spacew version (verified by comparison)
+
+**Module Characteristics**
+- Self-contained module with only numpy and typing dependencies
+- No spacew imports present (only `from typing import Tuple` and `import numpy as np`)
+- LSP diagnostics: No errors in the new file
+- All functions preserved as-is:
+  - `apply_point_mcar(data, missing_rate, seed)` - Random scattered missing (MCAR)
+  - `apply_subseq_missing(data, missing_rate, seed)` - Contiguous segments per feature
+  - `apply_block_missing(data, missing_rate, seed)` - Time intervals across all features
+  - `apply_missing_pattern(data, pattern, missing_rate, seed)` - Main entry point
+
+**Three Missing Patterns Supported**
+1. **Point MCAR**: Random scattered missing values
+   - Uses `np.random.default_rng(seed)` for reproducibility
+   - Selects exactly k = round(rate * n_observed) observed positions
+   - Each observed position has equal probability
+   
+2. **Subsequence (subseq)**: Sensor-specific dropout
+   - Masks contiguous segments per feature
+   - For each feature independently, masks contiguous segments
+   - Simulates sensor-specific dropout where one instrument fails
+   
+3. **Block**: Satellite outage
+   - Masks time intervals that affect ALL features simultaneously
+   - Simulates satellite outage (comms loss, power cycle)
+   - Block length calculated to achieve target rate
+
+**Exact Rate Enforcement**
+- All patterns enforce EXACT missing rates on observed values
+- Achieved rates match target rates to 4 decimal places (verified in tests)
+- Pre-existing NaNs are correctly excluded from rate calculation
+
+**Return Value Convention**
+- All functions return tuple: `(masked_data, artificial_mask, realized_rate)`
+- `masked_data`: Copy of data with NaN at masked positions
+- `artificial_mask`: Boolean array True where artificially masked
+- `realized_rate`: Actual achieved rate (should equal target)
+- Mask convention is consistent: artificial_mask is boolean True where masked
+
+**Verification Results**
+- All functions import successfully
+- Point MCAR pattern achieves exact 0.20 rate (difference: 0.0000)
+- Subsequence pattern achieves exact 0.15 rate (difference: 0.0000)
+- Block pattern achieves exact 0.20 rate (difference: 0.0000)
+- Unified interface works for all three patterns
+- Pre-existing NaNs correctly excluded from rate calculation
+- Original data remains unchanged (copy-on-write)
+
+**Key Observations**
+- No modifications needed to the source code
+- Module is completely independent from spacew
+- Ready to use for missing pattern simulation in the pipeline
+- All critical constraints preserved (exact rate enforcement, mask convention)
+
+**Testing Evidence**
+- Evidence saved to `.sisyphus/evidence/task-5-masking.txt`
+- All 6 tests passed successfully
+- Rate differences all < 0.0001
+
+- Added  to run masked synthetic data through DataLoader -> Lightning  (1 train batch, 1 epoch) -> model  -> , with  guards for torch/lightning.
+
+- Added test_e2e_pipeline in tests/test_e2e.py to run masked synthetic data through DataLoader, one-epoch Lightning training, model imputation, and compute_metrics, guarded with pytest.importorskip for torch/lightning.
+
+## Task 12: search_osse Training Loop Completion
+
+### Date
+2026-02-19
+
+### Findings
+- `scripts/search_osse.py` now reuses `train_fold` and `FOLD_DEFINITIONS` from `scripts/train_osse.py` instead of duplicating training logic.
+- Search flow now loads OSSE data once, applies per-config TSRM overrides, trains each selected fold, and extracts validation loss from `best_score` with fallback to callback metrics.
+- Added required aggregate outputs: per-config mean/std validation loss, CSV export with canonical columns, JSON artifact with per-fold details, and best-config selection by minimum mean validation loss.
+- Added progress reporting for config and fold indices to make long grid runs observable (`Config X/Y`, `Fold X/N`).
+
+## Task: Conv1d conv_dims TypeError Fix
+
+### Date
+2026-02-19
+
+### Findings
+- `architecture/model.py` expects each `conv_dims` entry as integer triplet `(kernel_size, dilation, groups)` and passes `kernel_size` directly into `nn.Conv1d`.
+- `scripts/search_osse.py` search grid had float kernels (`0.1`, `0.2`, `0.6`) which are invalid for `nn.Conv1d` construction.
+- `pipeline/config.py` now reads nested `tsrm` config when provided and uses integer `conv_dims` defaults to avoid fallback to invalid float kernels.
+- Verified with `conda run -n tsrm python scripts/search_osse.py --folds 0 --config configs/osse_default.yaml`: training starts and no longer throws the `empty(): ... tuple of ints, but got float` Conv1d error.
