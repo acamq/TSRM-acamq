@@ -68,7 +68,10 @@ training:
   accelerator: auto       # auto-detect GPU
   precision: 16-mixed
   gradient_clip_val: 1.0
-  num_workers: 4
+  num_workers: 18
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 4
 
 evaluation:
   baselines: [locf, linear]

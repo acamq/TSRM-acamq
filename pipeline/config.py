@@ -43,27 +43,36 @@ def build_tsrm_config(yaml_cfg: Dict) -> Dict:
     Returns:
         Dictionary containing TSRM configuration with all required keys.
     """
-    data_cfg = yaml_cfg.get('data', {})
-    tsrm_cfg = yaml_cfg.get('tsrm', {})
+    tsrm_cfg = yaml_cfg.get("tsrm", yaml_cfg)
+    data_cfg = yaml_cfg.get("data", {})
+
+    feature_dimension = tsrm_cfg.get("feature_dimension")
+    if feature_dimension is None:
+        variables = data_cfg.get("variables", [])
+        feature_dimension = len(variables) if isinstance(variables, list) and len(variables) > 0 else 8
+
+    seq_len = tsrm_cfg.get("seq_len")
+    if seq_len is None:
+        seq_len = data_cfg.get("window_size", 30)
 
     config = {
-        "feature_dimension": len(data_cfg.get('variables', [])),
-        "seq_len": data_cfg.get('window_size', 30),
+        "feature_dimension": int(feature_dimension),
+        "seq_len": int(seq_len),
         "pred_len": 0,
 
         "encoding_size": tsrm_cfg.get("encoding_size", 16),
         "h": tsrm_cfg.get("h", 4),
         "N": tsrm_cfg.get("N", 3),
-        "conv_dims": tsrm_cfg.get("conv_dims", [[0.1, 1, -1], [0.2, 1, -1], [0.6, 1, -1]]),
-        "attention_func": tsrm_cfg.get("attention_func", "classic"),
+        "conv_dims": tsrm_cfg.get("conv_dims", [[3, 1, -1], [5, 2, -1], [10, 3, -1]]),
+        "attention_func": tsrm_cfg.get("attention_func", "entmax15"),
         "batch_size": tsrm_cfg.get("batch_size", 8),
         "dropout": tsrm_cfg.get("dropout", 0.25),
 
         "revin": False,
 
         "loss_function_imputation": tsrm_cfg.get("loss_function_imputation", "mse+mae"),
-        "loss_imputation_mode": tsrm_cfg.get("loss_imputation_mode", "weighted_imputation"),
-        "loss_weight_alpha": tsrm_cfg.get("loss_weight_alpha", 10.0),
+        "loss_imputation_mode": tsrm_cfg.get("loss_imputation_mode", "imputation"),
+        "loss_weight_alpha": tsrm_cfg.get("loss_weight_alpha", 1.0),
 
         "missing_ratio": 0.0,
 
